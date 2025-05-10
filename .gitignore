@@ -1,0 +1,14 @@
+# Ignore virtual environments
+.venv/
+venv/
+__pycache__/
+
+# Ignore OS clutter
+.DS_Store
+
+# Ignore Jupyter/VSCode stuff
+.ipynb_checkpoints/
+.vscode/
+
+# Ignore CSVs and large files (optional)
+*.csv
