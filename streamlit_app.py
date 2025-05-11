@@ -11,6 +11,12 @@ warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
+    import time
+
+    host = st.secrets["databricks"]["host"].rstrip("/")
+    token = st.secrets["databricks"]["token"]
+    warehouse_id = st.secrets["databricks"]["warehouse_id"]
+
     url = f"{host}/api/2.0/sql/statements"
     headers = {"Authorization": f"Bearer {token}"}
     data = {
@@ -24,7 +30,7 @@ def load_data_from_databricks(query):
     response.raise_for_status()
     statement_id = response.json()["statement_id"]
 
-    # Poll for results
+    # Poll until query completes
     status_url = f"{url}/{statement_id}"
     while True:
         status_response = requests.get(status_url, headers=headers)
@@ -34,7 +40,7 @@ def load_data_from_databricks(query):
             break
         elif status in ["FAILED", "CANCELED"]:
             raise RuntimeError(f"Query {status}")
-        time.sleep(1)  # Wait 1 second before checking again
+        time.sleep(1)  # wait before checking again
 
     # Fetch results
     result_url = f"{url}/{statement_id}/result"
