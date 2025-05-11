@@ -10,21 +10,21 @@ warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
-    url = f"{host}/api/2.0/sql/statements/"
+    url = f"{host}/api/2.0/sql/statements"
     headers = {"Authorization": f"Bearer {token}"}
     data = {
         "statement": query,
         "warehouse_id": warehouse_id,
         "format": "JSON"
     }
-
+	
     # Submit the query
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
     statement_id = response.json()["statement_id"]
 
     # Poll for results
-    result_url = f"{url}{statement_id}/result"
+    result_url = f"{url}/{statement_id}/result"
     result_response = requests.get(result_url, headers=headers)
     result_response.raise_for_status()
     result_data = result_response.json()
