@@ -8,7 +8,7 @@ import databricks.sql as dbsql
 # Load Databricks credentials from Streamlit secrets
 host = st.secrets["databricks"]["host"].rstrip("/")
 token = st.secrets["databricks"]["token"]
-warehouse_id = st.secrets["databricks"]["warehouse_id"]
+
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
