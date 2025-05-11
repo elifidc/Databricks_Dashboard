@@ -1,14 +1,44 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-df = pd.read_csv("~/Desktop/Databricks Dashboard/cleaned_customers.csv")
-#print(df.columns)
-#df = df.sort_values('ideal_count', ascending=False).head(20)
+import requests
 
-# Load your cleaned dataset from DBFS using Spark
-#df_spark = spark.read.csv("/FileStore/cleaned_customers.csv", header=True, inferSchema=True)
-#df = df_spark.toPandas()
-zip_summary = pd.read_csv("~/Desktop/Databricks Dashboard/zip_summary.csv")
+# Load Databricks credentials from Streamlit secrets
+host = st.secrets["databricks"]["host"]
+token = st.secrets["databricks"]["token"]
+warehouse_id = st.secrets["databricks"]["warehouse_id"]
+
+@st.cache_data(ttl=3600)
+def load_data_from_databricks(query):
+    url = f"{host}/api/2.0/sql/statements/"
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {
+        "statement": query,
+        "warehouse_id": warehouse_id,
+        "format": "JSON"
+    }
+
+    # Submit the query
+    response = requests.post(url, json=data, headers=headers)
+    response.raise_for_status()
+    statement_id = response.json()["statement_id"]
+
+    # Poll for results
+    result_url = f"{url}{statement_id}/result"
+    result_response = requests.get(result_url, headers=headers)
+    result_response.raise_for_status()
+    result_data = result_response.json()
+
+    df = pd.DataFrame(result_data["result"]["data_array"],
+                      columns=[col["name"] for col in result_data["manifest"]["schema"]["columns"]])
+    return df
+
+# Replace the CSV load with this:
+query = "SELECT * FROM ds25_wp1.cleaned_customers LIMIT 10000"
+df = load_data_from_databricks(query)
+
+
+#zip_summary = pd.read_csv("~/Desktop/Databricks Dashboard/zip_summary.csv")
 
 
 ################
@@ -54,13 +84,13 @@ binary_cols = [
 # Convert to numeric and fill missing
 df[binary_cols] = df[binary_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
 
-top_occupations = df.groupby('ZIPCode')[binary_cols].sum().apply(
-    lambda row: row.nlargest(3).index.tolist(), axis=1
-).reset_index()
-top_occupations.columns = ['ZIPCode', 'TopOccupations']
-zip_summary = zip_summary.merge(top_occupations, on='ZIPCode', how='left')
-zip_summary['Ideal Customer Count:'] = zip_summary['ideal_count']
-zip_summary.rename(columns={'TopOccupations': 'Most Common Occupations:'}, inplace=True)
+# top_occupations = df.groupby('ZIPCode')[binary_cols].sum().apply(
+#     lambda row: row.nlargest(3).index.tolist(), axis=1
+# ).reset_index()
+# top_occupations.columns = ['ZIPCode', 'TopOccupations']
+# zip_summary = zip_summary.merge(top_occupations, on='ZIPCode', how='left')
+# zip_summary['Ideal Customer Count:'] = zip_summary['ideal_count']
+# zip_summary.rename(columns={'TopOccupations': 'Most Common Occupations:'}, inplace=True)
 
 
 # Title
