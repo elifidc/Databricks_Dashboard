@@ -12,3 +12,7 @@ __pycache__/
 
 # Ignore CSVs and large files (optional)
 *.csv
+
+*.toml
+
+working_streamlit_app.py
