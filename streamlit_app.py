@@ -10,7 +10,7 @@ warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
-    url = f"{host}/api/2.0/sql/statements"
+    url = f"{host}api/2.0/sql/statements"
     headers = {"Authorization": f"Bearer {token}"}
     data = {
         "statement": query,
