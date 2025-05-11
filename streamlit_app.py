@@ -11,14 +11,14 @@ warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
-    url = f"{host}api/2.0/sql/statements"
+    url = f"{host}/api/2.0/sql/statements"
     headers = {"Authorization": f"Bearer {token}"}
     data = {
         "statement": query,
         "warehouse_id": warehouse_id,
         "format": "JSON"
     }
-	
+
     # Submit the query
     response = requests.post(url, json=data, headers=headers)
     response.raise_for_status()
@@ -26,25 +26,26 @@ def load_data_from_databricks(query):
 
     # Poll for results
     status_url = f"{url}/{statement_id}"
-	while True:
-   		status_response = requests.get(status_url, headers=headers)
-   		status_response.raise_for_status()
-   		status = status_response.json()["status"]["state"]
-   		if status == "SUCCEEDED":
-       		break
-		elif status in ["FAILED", "CANCELED"]:
-        	raise RuntimeError(f"Query {status}")
-    	time.sleep(1)  # Wait 1 second before checking again
+    while True:
+        status_response = requests.get(status_url, headers=headers)
+        status_response.raise_for_status()
+        status = status_response.json()["status"]["state"]
+        if status == "SUCCEEDED":
+            break
+        elif status in ["FAILED", "CANCELED"]:
+            raise RuntimeError(f"Query {status}")
+        time.sleep(1)  # Wait 1 second before checking again
 
-# Fetch results
-result_url = f"{url}/{statement_id}/result"
-result_response = requests.get(result_url, headers=headers)
-result_response.raise_for_status()
+    # Fetch results
+    result_url = f"{url}/{statement_id}/result"
+    result_response = requests.get(result_url, headers=headers)
+    result_response.raise_for_status()
     result_data = result_response.json()
 
     df = pd.DataFrame(result_data["result"]["data_array"],
                       columns=[col["name"] for col in result_data["manifest"]["schema"]["columns"]])
     return df
+
 
 # Replace the CSV load with this:
 query = "SELECT * FROM ds25_wp1.cleaned_customers LIMIT 10000"
