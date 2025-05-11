@@ -30,17 +30,17 @@ def load_data_from_databricks(query):
     response.raise_for_status()
     statement_id = response.json()["statement_id"]
 
-    # Poll until query completes
+    # Wait for query to finish
     status_url = f"{url}/{statement_id}"
     while True:
         status_response = requests.get(status_url, headers=headers)
         status_response.raise_for_status()
-        status = status_response.json()["status"]["state"]
-        if status == "SUCCEEDED":
+        state = status_response.json()["status"]["state"]
+        if state == "SUCCEEDED":
             break
-        elif status in ["FAILED", "CANCELED"]:
-            raise RuntimeError(f"Query {status}")
-        time.sleep(1)  # wait before checking again
+        elif state in ["FAILED", "CANCELED"]:
+            raise RuntimeError(f"Query {state}")
+        time.sleep(1)
 
     # Fetch results
     result_url = f"{url}/{statement_id}/result"
@@ -51,6 +51,7 @@ def load_data_from_databricks(query):
     df = pd.DataFrame(result_data["result"]["data_array"],
                       columns=[col["name"] for col in result_data["manifest"]["schema"]["columns"]])
     return df
+
 
 
 # Replace the CSV load with this:
