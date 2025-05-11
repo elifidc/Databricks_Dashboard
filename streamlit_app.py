@@ -5,7 +5,7 @@ import requests
 import time
 
 # Load Databricks credentials from Streamlit secrets
-host = st.secrets["databricks"]["host"]
+host = st.secrets["databricks"]["host"].rstrip("/")
 token = st.secrets["databricks"]["token"]
 warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
@@ -50,35 +50,6 @@ def load_data_from_databricks(query):
 # Replace the CSV load with this:
 query = "SELECT * FROM ds25_wp1.cleaned_customers LIMIT 10000"
 df = load_data_from_databricks(query)
-
-
-#zip_summary = pd.read_csv("~/Desktop/Databricks Dashboard/zip_summary.csv")
-
-
-################
-
-# zip_summary = (
-#     df.groupby("ZIPCode")
-#     .agg(
-#         ideal_count=('CustomerID', 'count'),
-#         Latitude=('Latitude', 'first'),
-#         Longitude=('Longitude', 'first')
-#     )
-#     .reset_index()
-#     .dropna(subset=['Latitude', 'Longitude'])
-# )
-# 
-# # STEP 2: Clean after creation
-# zip_summary['Latitude'] = pd.to_numeric(zip_summary['Latitude'], errors='coerce')
-# zip_summary['Longitude'] = pd.to_numeric(zip_summary['Longitude'], errors='coerce')
-# zip_summary = zip_summary.dropna(subset=['Latitude', 'Longitude'])
-
-
-
-#zip_summary['Ideal Customer Count:'] = zip_summary['ideal_count']
-##############
-
-
 
 
 
