@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import requests
+import time
 
 # Load Databricks credentials from Streamlit secrets
 host = st.secrets["databricks"]["host"]
@@ -24,9 +25,21 @@ def load_data_from_databricks(query):
     statement_id = response.json()["statement_id"]
 
     # Poll for results
-    result_url = f"{url}/{statement_id}/result"
-    result_response = requests.get(result_url, headers=headers)
-    result_response.raise_for_status()
+    status_url = f"{url}/{statement_id}"
+	while True:
+   		status_response = requests.get(status_url, headers=headers)
+   		status_response.raise_for_status()
+   		status = status_response.json()["status"]["state"]
+   		if status == "SUCCEEDED":
+       		break
+		elif status in ["FAILED", "CANCELED"]:
+        	raise RuntimeError(f"Query {status}")
+    	time.sleep(1)  # Wait 1 second before checking again
+
+# Fetch results
+result_url = f"{url}/{statement_id}/result"
+result_response = requests.get(result_url, headers=headers)
+result_response.raise_for_status()
     result_data = result_response.json()
 
     df = pd.DataFrame(result_data["result"]["data_array"],
