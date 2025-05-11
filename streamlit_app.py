@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import requests
 import time
+import databricks.sql as dbsql
 
 # Load Databricks credentials from Streamlit secrets
 host = st.secrets["databricks"]["host"].rstrip("/")
@@ -11,47 +12,23 @@ warehouse_id = st.secrets["databricks"]["warehouse_id"]
 
 @st.cache_data(ttl=3600)
 def load_data_from_databricks(query):
-    import time
+    from databricks import sql
 
-    host = st.secrets["databricks"]["host"].rstrip("/")
-    token = st.secrets["databricks"]["token"]
-    warehouse_id = st.secrets["databricks"]["warehouse_id"]
+    conn = sql.connect(
+        server_hostname=st.secrets["databricks"]["host"].replace("https://", "").rstrip("/"),
+        http_path=st.secrets["databricks"]["http_path"],
+        access_token=st.secrets["databricks"]["token"]
+    )
 
-    url = f"{host}/api/2.0/sql/statements"
-    headers = {"Authorization": f"Bearer {token}"}
-    data = {
-        "statement": query,
-        "warehouse_id": warehouse_id,
-        "format": "JSON"
-    }
+    cursor = conn.cursor()
+    cursor.execute(query)
+    result = cursor.fetchall()
+    columns = [desc[0] for desc in cursor.description]
+    df = pd.DataFrame(result, columns=columns)
+    cursor.close()
+    conn.close()
 
-    # Submit the query
-    response = requests.post(url, json=data, headers=headers)
-    response.raise_for_status()
-    statement_id = response.json()["statement_id"]
-
-    # Wait for query to finish
-    status_url = f"{url}/{statement_id}"
-    while True:
-        status_response = requests.get(status_url, headers=headers)
-        status_response.raise_for_status()
-        state = status_response.json()["status"]["state"]
-        if state == "SUCCEEDED":
-            break
-        elif state in ["FAILED", "CANCELED"]:
-            raise RuntimeError(f"Query {state}")
-        time.sleep(1)
-
-    # Fetch results
-    result_url = f"{url}/{statement_id}/result"
-    result_response = requests.get(result_url, headers=headers)
-    result_response.raise_for_status()
-    result_data = result_response.json()
-
-    df = pd.DataFrame(result_data["result"]["data_array"],
-                      columns=[col["name"] for col in result_data["manifest"]["schema"]["columns"]])
     return df
-
 
 
 # Replace the CSV load with this:
